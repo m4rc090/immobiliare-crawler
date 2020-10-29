@@ -1,0 +1,6 @@
+ds4biz-commons
+beautifulsoup4
+ds4biz-storage == 0.2.2-dev
+pandas
+openpyxl
+xlsxwriter
