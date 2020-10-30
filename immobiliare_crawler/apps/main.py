@@ -5,7 +5,8 @@ from immobiliare_crawler.dao.daos import ZoneRomaDao, ImmobiliareCaseDao
 
 def app(run_crawler: bool):
     params = {"prezzo_minimo": 160000, "prezzo_massimo": 280000, "superficie_minima": 40, "superficie_massima": 100}
-    zone = ["Eur, Torrino, Tintoretto", "Garbatella, Navigatori, Ostiense", "Marconi, San Paolo"]
+    zone = ["Eur, Torrino, Tintoretto", "Garbatella, Navigatori, Ostiense",
+            "Marconi, San Paolo", "Appia Pignatelli, Ardeatino, Montagnola"]
     zone_dao = ZoneRomaDao()
 
     id_zone = [zone_dao.get_zona_by_nome(nomi).id_zona for nomi in zone]
