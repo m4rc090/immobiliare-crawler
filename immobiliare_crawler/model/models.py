@@ -112,3 +112,10 @@ class CasaImmobiliare:
             casa.piano = casa_dict["_piano"]
 
         return casa
+
+
+class Zona:
+    def __init__(self, id_zona: str, nome_zona: str, comune: str):
+        self.id_zona = id_zona
+        self.nome_zona = nome_zona
+        self.comune = comune

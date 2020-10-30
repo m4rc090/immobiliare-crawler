@@ -1,11 +1,28 @@
 from immobiliare_crawler.business.daemons import JobCralwer
+from immobiliare_crawler.business.report import ReportGenerator
+from immobiliare_crawler.dao.daos import ZoneRomaDao, ImmobiliareCaseDao
 
 if __name__ == '__main__':
+
+    zone = ["Eur, Torrino, Tintoretto", "Garbatella, Navigatori, Ostiense", "Marconi, San Paolo"]
+    zone_dao = ZoneRomaDao()
+
+    id_zone = [zone_dao.get_zona_by_nome(nomi).id_zona for nomi in zone]
+    print(id_zone)
+
+    dao_case = ImmobiliareCaseDao(collection="case_collection_1")
     job = JobCralwer(prezzo_minimo=160000,
                      prezzo_massimo=280000,
                      superficie_minima=40,
                      superficie_massima=100,
-                     zone=[10169, 10153, 10154])
+                     zone=id_zone, dao_case=dao_case)
 
-    job.run_crawler()
-    job.generate_report("/home/marco/Desktop/")
+    # job.run_crawler()
+
+    report_generator = ReportGenerator(prezzo_minimo=160000,
+                                       prezzo_massimo=280000,
+                                       superficie_minima=40,
+                                       superficie_massima=100,
+                                       nomi_zone=zone,
+                                       dao_case=dao_case)
+    report_generator.generate("/home/marco/Documents/MarcoDocs/my-projects/immobiliare-crawler")
