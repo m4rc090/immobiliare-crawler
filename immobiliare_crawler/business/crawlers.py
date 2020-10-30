@@ -13,13 +13,8 @@ class Crawler:
 
 
 class ImmobiliareCrawler(Crawler):
-    def __init__(self, base_url: str ="https://www.immobiliare.it/en/vendita-appartamenti/roma/?criterio=rilevanza&noAste=1"):
+    def __init__(self, base_url: str = "https://www.immobiliare.it/en/vendita-appartamenti/roma/?criterio=rilevanza&noAste=1"):
         self._base_url = base_url
-        self._prezzo_minimo = None
-        self._prezzo_massimo = None
-        self._superficie_minima = None
-        self._superficie_massima = None
-        self._zone = None
 
     @property
     def base_url(self):
@@ -29,63 +24,19 @@ class ImmobiliareCrawler(Crawler):
     def base_url(self, base_url: str):
         self._base_url = base_url
 
-    @property
-    def prezzo_minimo(self):
-        return self._prezzo_minimo
+    def crawl(self, prezzo_minimo: int, prezzo_massimo: int, superficie_minima: int,
+                    superficie_massima: int, zone: List[str]) -> List[CasaImmobiliare]:
 
-    @prezzo_minimo.setter
-    def prezzo_minimo(self, prezzo_minimo: int):
-        self._prezzo_minimo = prezzo_minimo
+        self.base_url += "&prezzoMinimo=" + str(prezzo_minimo)
 
-    @property
-    def prezzo_massimo(self):
-        return self._prezzo_massimo
+        self.base_url += "&prezzoMassimo=" + str(prezzo_massimo)
 
-    @prezzo_massimo.setter
-    def prezzo_massimo(self, prezzo_massimo: int):
-        self._prezzo_massimo = prezzo_massimo
+        self.base_url += "&superficieMinima=" + str(superficie_minima)
 
-    @property
-    def superficie_minima(self):
-        return self._superficie_minima
+        self.base_url += "&superficieMassima=" + str(superficie_massima)
 
-    @superficie_minima.setter
-    def superficie_minima(self, superficie_minima: int):
-        self._superficie_minima = superficie_minima
-
-    @property
-    def superficie_massima(self):
-        return self._superficie_massima
-
-    @superficie_massima.setter
-    def superficie_massima(self, superficie_massima: int):
-        self._superficie_massima = superficie_massima
-
-    @property
-    def zone(self):
-        return self._zone
-
-    @zone.setter
-    def zone(self, zone: List[int]):
-        self._zone = zone
-
-    def crawl(self) -> List[CasaImmobiliare]:
-
-        if self.prezzo_minimo:
-            self.base_url += "&prezzoMinimo=" + str(self.prezzo_minimo)
-
-        if self.prezzo_massimo:
-            self.base_url += "&prezzoMassimo=" + str(self.prezzo_massimo)
-
-        if self.superficie_minima:
-            self.base_url += "&superficieMinima=" + str(self.superficie_minima)
-
-        if self.superficie_massima:
-            self.base_url += "&superficieMassima=" + str(self.superficie_massima)
-
-        if self.zone:
-            for zona in self.zone:
-                self.base_url += "&idMZona[]=" + str(zona)
+        for zona in zone:
+            self.base_url += "&idMZona[]=" + str(zona)
 
         u = URLRequest(self.base_url, response_converter=lambda response: response.text)
 

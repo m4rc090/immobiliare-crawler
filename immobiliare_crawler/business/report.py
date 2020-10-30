@@ -9,13 +9,13 @@ from immobiliare_crawler.model.models import CasaImmobiliare
 
 class ReportGenerator:
     def __init__(self, prezzo_minimo: int, prezzo_massimo: int, superficie_minima: int,
-                 superficie_massima: int, nomi_zone: List[str],
+                 superficie_massima: int, zone: List[str],
                  dao_case: ImmobiliareCaseDao = ImmobiliareCaseDao(collection="case_collection_1")):
         self.prezzo_minimo = str(prezzo_minimo)
         self.prezzo_massimo = str(prezzo_massimo)
         self.superficie_minima = str(superficie_minima)
         self.superficie_massima = str(superficie_massima)
-        self.nomi_zone = nomi_zone
+        self.nomi_zone = zone
         self.dao = dao_case
 
     def dayly_case(self) -> List[CasaImmobiliare]:
