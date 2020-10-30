@@ -6,3 +6,5 @@ venv
 dist
 __pycache__
 dist
+setup.py
+ppom.json
