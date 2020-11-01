@@ -8,3 +8,4 @@ __pycache__
 dist
 setup.py
 ppom.json
+*local_config.py

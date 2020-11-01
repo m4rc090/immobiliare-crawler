@@ -18,9 +18,7 @@ class ReportGenerator:
         self.nomi_zone = zone
         self.dao = dao_case
 
-    def dayly_case(self) -> List[CasaImmobiliare]:
-        dt = datetime.now()
-        dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    def dayly_case(self, dt: datetime) -> List[CasaImmobiliare]:
         for case in self.dao.all_case_by_date(dt):
             yield case
 
@@ -28,13 +26,12 @@ class ReportGenerator:
         for case in self.dao.all_case():
             yield case
 
-    def generate(self, report_folder: str):
-        today = datetime.today().date()
-        l = sorted(list(self.dayly_case()), key=lambda x: x.prezzo, reverse=True)
+    def generate(self, report_folder: str, date: datetime) -> str:
+        dt = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        l = sorted(list(self.dayly_case(dt=dt)), key=lambda x: x.prezzo, reverse=True)
         # l = sorted(list(self.all_case()), key=lambda x: x.prezzo, reverse=True)
 
-        print("-- inizio scrittura file")
-        file_name = os.path.join(report_folder, "report_case_" + str(today)) + ".xlsx"
+        file_name = os.path.join(report_folder, "report_case_" + datetime.today().strftime("%d-%m-%Y") + ".xlsx")
         df_case = pd.DataFrame([vars(s) for s in l], columns=['_id_immobiliare', '_link', '_titolo', '_prezzo', '_stanze', '_mq', '_bagni', '_piano'])
 
         ricerca = {'prezzo_minimo':  [self.prezzo_minimo],
@@ -54,5 +51,4 @@ class ReportGenerator:
 
         # Close the Pandas Excel writer and output the Excel file.
         writer.save()
-
-        print("-- fine scrittura file")
+        return file_name

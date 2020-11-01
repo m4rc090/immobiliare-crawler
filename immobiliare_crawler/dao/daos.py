@@ -5,12 +5,13 @@ from typing import List
 from ds4biz_commons.utils.requests_utils import URLRequest
 from ds4biz_storage.dao.mongo_dao import MongoDAO
 
+from immobiliare_crawler.config.app_config import MONGO_HOST, MONGO_PORT, MONGO_DB
 from immobiliare_crawler.model.models import CasaImmobiliare, Zona
 
 
 class ImmobiliareCaseDao(MongoDAO):
 
-    def __init__(self, collection: str, host: str = "immobiliare_mongo", port: int = 37017, db: str = "imm_case_db"):
+    def __init__(self, collection: str, host: str = MONGO_HOST, port: int = MONGO_PORT, db: str = MONGO_DB):
         super().__init__(host=host, port=port, db=db)
         self.collection = collection
 
