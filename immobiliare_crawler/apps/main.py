@@ -44,7 +44,7 @@ class MainWorkFlow:
 if __name__ == '__main__':
     app = MainWorkFlow()
 
-    params = {"run_crawler": False,
+    params = {"run_crawler": True,
               "prezzo_minimo": 160000,
               "prezzo_massimo": 280000,
               "superficie_minima": 40,

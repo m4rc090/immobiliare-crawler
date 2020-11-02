@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import List
 
+import requests
 from bs4 import BeautifulSoup
-from ds4biz_commons.utils.requests_utils import URLRequest
 
 from immobiliare_crawler.model.models import CasaImmobiliare
 
@@ -38,10 +38,7 @@ class ImmobiliareCrawler(Crawler):
         for zona in zone:
             self.base_url += "&idMZona[]=" + str(zona)
 
-        u = URLRequest(self.base_url, response_converter=lambda response: response.text)
-
-        # faccio la get sulla prima pagina
-        text_html_page = u.get()
+        text_html_page = requests.get(self.base_url).content.decode()
         bs_page = BeautifulSoup(text_html_page, features="html.parser")
         for casa in self.parse_case_in_pagina(bs_page): yield casa
 
@@ -51,8 +48,7 @@ class ImmobiliareCrawler(Crawler):
         while not errore:
             try:
                 url_paginated = self.base_url + "&pag=" + str(page_number)
-                u = URLRequest(url_paginated, response_converter=lambda response: response.text)
-                text_html_page = u.get()
+                text_html_page = requests.get(url_paginated).content.decode()
                 bs_page = BeautifulSoup(text_html_page, features="html.parser")
                 for casa in self.parse_case_in_pagina(bs_page): yield casa
                 page_number += 1

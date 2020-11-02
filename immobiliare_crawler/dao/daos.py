@@ -2,11 +2,119 @@ import json
 from datetime import datetime
 from typing import List
 
-from ds4biz_commons.utils.requests_utils import URLRequest
-from ds4biz_storage.dao.mongo_dao import MongoDAO
+import requests
+from bson import ObjectId
+from pymongo import DESCENDING, MongoClient
 
 from immobiliare_crawler.config.app_config import MONGO_HOST, MONGO_PORT, MONGO_DB
 from immobiliare_crawler.model.models import CasaImmobiliare, Zona
+
+
+class MongoDAO:
+
+    def __init__(self, host="localhost", port=27017, db="database"):
+        self.db = db
+        self.host = host
+        self.port = port
+        self.client = MongoClient(host=self.host, port=self.port)
+
+    def save(self, collection, obj):
+        coll = self.__getcoll(collection)
+
+        if not type(obj) == list:
+            obj = [obj]
+
+        obj_to_insert = [o for o in obj if "_id" not in o]
+
+        obj_to_update = [o for o in obj if "_id" in o]
+
+        # insert on object without "_id" field
+        if len(obj_to_insert) > 0:
+            coll.insert(obj_to_insert, check_keys=False)
+
+        # update on object with "_id" field
+        for o in obj_to_update:
+            id_ob = o["_id"]
+            del o["_id"]
+            try:
+                doc = coll.find_one_and_update(
+                    {"_id": ObjectId(id_ob)},
+                    {"$set": o}, upsert=True)
+                if not doc:
+                    coll.insert(o, check_keys=False)
+            except:
+                coll.insert(o, check_keys=False)
+
+    def update_by_id(self, collection, id, update_dict):
+        coll = self.__getcoll(collection)
+        coll.find_one_and_update({"_id": ObjectId(id)}, {"$set": update_dict}, upsert=True)
+
+    def update_by_conditiondict(self, collection, condition_dict, update_dict):
+        coll = self.__getcoll(collection)
+        coll.update_one(condition_dict, {"$set": update_dict}, upsert=True)
+
+    def delete(self, collection, id):
+        coll = self.__getcoll(collection)
+        coll.remove({"_id": ObjectId(id)})
+
+    def delete_by_conditiondict(self, collection, condition_dict):
+        coll = self.__getcoll(collection)
+        coll.remove(condition_dict, True)
+
+    def all(self, collection, start: int = 0, rows: int = None, selection=None):
+        coll = self.__getcoll(collection)
+        if rows:
+            for el in coll.find(None, selection).skip(start).limit(rows):
+                el["_id"] = str(el["_id"])
+                yield el
+        else:
+            for el in coll.find().skip(start):
+                el["_id"] = str(el["_id"])
+                yield el
+
+    def getbyid(self, collection, id):
+        coll = self.__getcoll(collection)
+        el = coll.find_one({"_id": ObjectId(id)})
+        if not el:
+            raise Exception("Element with id " + str(id) + " not found")
+        el["_id"] = str(el["_id"])
+        return el
+
+    def collections(self):
+        return self.client.get_database(self.db).collection_names()
+
+    def drop(self, collection):
+        coll = self.__getcoll(collection)
+        coll.drop()
+
+    def __getcoll(self, collection):
+        return self.client.get_database(self.db).get_collection(collection)
+
+    def sample(self, collection, n):
+        coll = self.__getcoll(collection)
+        for el in coll.aggregate([{"$sample": {"size": n}}]):
+            el["_id"] = str(el["_id"])
+            yield el
+
+    def query(self, collection, q):
+        coll = self.__getcoll(collection)
+        for el in coll.find(q):
+            el["_id"] = str(el["_id"])
+            yield el
+
+    def copy(self, collection1, collection2):
+        coll1 = self.__getcoll(collection1)
+        coll2 = self.__getcoll(collection2)
+        coll2.remove()
+        for el in coll1.find():
+            coll2.insert(el)
+
+    def count(self, collection):
+        return self.__getcoll(collection).count()
+
+    def get_last(self, collection, q: {} = None):
+        coll = self.__getcoll(collection)
+        return coll.find_one(q, sort=[('_id', DESCENDING)])
 
 
 class ImmobiliareCaseDao(MongoDAO):
@@ -47,14 +155,14 @@ class ImmobiliareCaseDao(MongoDAO):
 # qui poi ci facciamo una bella factory per citta'
 class ZoneRomaDao:
     def __init__(self, base_url: str = "https://www.immobiliare.it/services/geography/getGeography.php?action=getMacrozoneComune&idComune=6737"):
-        self.url_request = URLRequest(base_url, response_converter=lambda response: response.text)
+        self.base_url = base_url
         self.comune = None
         self.id2name = dict()
-        self.__parse_url(self.url_request)
+        self.__parse_url(self.base_url)
 
-    def __parse_url(self, url_req: URLRequest):
-        response = json.loads(url_req.get())
+    def __parse_url(self, base_url: str):
 
+        response = json.loads(requests.get(base_url).content.decode())
         if "info" in response and "nome" in response["info"]:
             self.comune = response["info"]["nome"]
 
