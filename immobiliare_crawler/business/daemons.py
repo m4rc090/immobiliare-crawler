@@ -1,15 +1,17 @@
 from typing import List
 
 from immobiliare_crawler.business.crawlers import ImmobiliareCrawler
-from immobiliare_crawler.dao.daos import ImmobiliareCaseDao, ZoneRomaDao
+from immobiliare_crawler.dao.daos import ImmobiliareCaseDao, ZoneRomaDao, Utenti2CaseDao
 
 
 class JobCralwer:
     def __init__(self, crawler: ImmobiliareCrawler = ImmobiliareCrawler(),
-                 dao_case: ImmobiliareCaseDao = ImmobiliareCaseDao(collection="case_collection_1"),
+                 dao_case: ImmobiliareCaseDao = ImmobiliareCaseDao(),
+                 dao_utenti2case: Utenti2CaseDao = Utenti2CaseDao(),
                  dao_zone: ZoneRomaDao = ZoneRomaDao()):
         self.crawler = crawler
         self.dao = dao_case
+        self.dao_utenti2case = dao_utenti2case
         self.dao_zone = dao_zone
 
     def run_crawler(self, prezzo_minimo: int, prezzo_massimo: int, superficie_minima: int,
@@ -19,4 +21,8 @@ class JobCralwer:
                                                     superficie_minima=superficie_minima,
                                                     superficie_massima=superficie_massima,
                                                     zone=zone)):
-            self.dao.save_case(casa=casa)
+            casa_salvata = self.dao.save_case(casa=casa)
+            # per ogni casa salvata, cioe nuova da rimandare agli utenti, cancello le entry nel db che associa
+            # le case gia inviate agli utenti
+            if casa_salvata:
+                self.dao_utenti2case.delete_utenti2case(casa_salvata.id)

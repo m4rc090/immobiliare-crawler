@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List
 
 import requests
@@ -25,7 +24,7 @@ class ImmobiliareCrawler(Crawler):
         self._base_url = base_url
 
     def crawl(self, prezzo_minimo: int, prezzo_massimo: int, superficie_minima: int,
-                    superficie_massima: int, zone: List[str]) -> List[CasaImmobiliare]:
+              superficie_massima: int, zone: List[str]) -> List[CasaImmobiliare]:
 
         self.base_url += "&prezzoMinimo=" + str(prezzo_minimo)
 
@@ -38,7 +37,9 @@ class ImmobiliareCrawler(Crawler):
         for zona in zone:
             self.base_url += "&idMZona[]=" + str(zona)
 
-        text_html_page = requests.get(self.base_url).content.decode()
+        response = requests.get(self.base_url)
+        if response.status_code != 200: raise Exception("Bad base url")
+        text_html_page = response.content.decode()
         bs_page = BeautifulSoup(text_html_page, features="html.parser")
         for casa in self.parse_case_in_pagina(bs_page): yield casa
 
@@ -48,7 +49,9 @@ class ImmobiliareCrawler(Crawler):
         while not errore:
             try:
                 url_paginated = self.base_url + "&pag=" + str(page_number)
-                text_html_page = requests.get(url_paginated).content.decode()
+                response = requests.get(url_paginated)
+                if response.status_code != 200: raise Exception("No more pages")
+                text_html_page = response.content.decode()
                 bs_page = BeautifulSoup(text_html_page, features="html.parser")
                 for casa in self.parse_case_in_pagina(bs_page): yield casa
                 page_number += 1
@@ -59,46 +62,47 @@ class ImmobiliareCrawler(Crawler):
     def parse_case_in_pagina(self, bs_page: BeautifulSoup) -> List[CasaImmobiliare]:
 
         annunci_list = bs_page.find(name="ul", attrs={"class": "annunci-list"})
-        case = annunci_list.find_all(name="li", attrs={"class": "listing-item"})
-        for casa in case:
-            id = casa.get("data-id")
-            casa_body = casa.find(name="div", attrs={"class": "listing-item_body--content"})
+        if annunci_list:
+            case = annunci_list.find_all(name="li", attrs={"class": "listing-item"})
+            for casa in case:
+                id = casa.get("data-id")
+                casa_body = casa.find(name="div", attrs={"class": "listing-item_body--content"})
 
-            if casa_body:
-                casa_obj = CasaImmobiliare(id_immobiliare=id, crawling_date=datetime.now())
-                link_titolo = casa_body.find(name="p", attrs={"class": "titolo"})
-                if link_titolo:
-                    link = link_titolo.a.get("href")
-                    casa_obj.link = link
-                    titolo = link_titolo.a.get("title")
-                    casa_obj.titolo = titolo
+                if casa_body:
+                    casa_obj = CasaImmobiliare(id_immobiliare=id)
+                    link_titolo = casa_body.find(name="p", attrs={"class": "titolo"})
+                    if link_titolo:
+                        link = link_titolo.a.get("href")
+                        casa_obj.link = link
+                        titolo = link_titolo.a.get("title")
+                        casa_obj.titolo = titolo
 
-                casa_features = casa_body.find(name="ul", attrs={"class": "listing-features list-piped"})
-                if casa_features:
-                    prezzo = casa_features.find(name="li", attrs={"class": "lif__item lif__pricing"})
-                    if prezzo:
-                        try:
-                            casa_obj.prezzo = int(prezzo.get_text().replace("€", "").replace(".", "").strip())
-                        except Exception as e:
-                            print(e)
-                            casa_obj.prezzo = 0
-                    features = casa_features.find_all(name="div", attrs={"class": "lif__data"})
-                    if features:
-                        if len(features) > 0:
-                            stanze_span = features[0].find(name="span")
-                            if stanze_span:
-                                casa_obj.stanze = stanze_span.get_text().strip()
-                        if len(features) > 1:
-                            mq_span = features[1].find(name="span")
-                            if mq_span:
-                                casa_obj.mq = mq_span.get_text().strip()
-                        if len(features) > 2:
-                            bagni_span = features[2].find(name="span")
-                            if bagni_span:
-                                casa_obj.bagni = bagni_span.get_text().strip()
-                        if len(features) > 3:
-                            piano_abbr = features[3].find(name="abbr")
-                            if piano_abbr:
-                                casa_obj.piano = piano_abbr.get_text().strip()
+                    casa_features = casa_body.find(name="ul", attrs={"class": "listing-features list-piped"})
+                    if casa_features:
+                        prezzo = casa_features.find(name="li", attrs={"class": "lif__item lif__pricing"})
+                        if prezzo:
+                            try:
+                                casa_obj.prezzo = int(prezzo.get_text().replace("€", "").replace(".", "").strip())
+                            except Exception as e:
+                                print(e)
+                                casa_obj.prezzo = 0
+                        features = casa_features.find_all(name="div", attrs={"class": "lif__data"})
+                        if features:
+                            if len(features) > 0:
+                                stanze_span = features[0].find(name="span")
+                                if stanze_span:
+                                    casa_obj.stanze = stanze_span.get_text().strip()
+                            if len(features) > 1:
+                                mq_span = features[1].find(name="span")
+                                if mq_span:
+                                    casa_obj.mq = mq_span.get_text().strip()
+                            if len(features) > 2:
+                                bagni_span = features[2].find(name="span")
+                                if bagni_span:
+                                    casa_obj.bagni = bagni_span.get_text().strip()
+                            if len(features) > 3:
+                                piano_abbr = features[3].find(name="abbr")
+                                if piano_abbr:
+                                    casa_obj.piano = piano_abbr.get_text().strip()
 
-                yield casa_obj
+                    yield casa_obj

@@ -14,13 +14,13 @@ class SmtpManager:
         self.receivers = receivers
         self.password = password
 
-    def send(self, dt: datetime, attachment_path: str = None):
+    def send(self, attachment_path: str = None):
 
         msg = MIMEMultipart()
 
         msg['From'] = self.sender
         msg['To'] = ",".join(self.receivers)
-        msg['Subject'] = "Report automatico case {}".format(str(dt))
+        msg['Subject'] = "Report automatico case {}".format(str(datetime.today()))
 
         body = "Ciao, ecco le case di oggi da Immobiliare"
 

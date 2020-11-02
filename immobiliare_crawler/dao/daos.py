@@ -7,7 +7,8 @@ from bson import ObjectId
 from pymongo import DESCENDING, MongoClient
 
 from immobiliare_crawler.config.app_config import MONGO_HOST, MONGO_PORT, MONGO_DB
-from immobiliare_crawler.model.models import CasaImmobiliare, Zona
+from immobiliare_crawler.config.app_constants import collection_utenti, collection_case, collection_utenti2case
+from immobiliare_crawler.model.models import CasaImmobiliare, Zona, Utente, Utente2Casa
 
 
 class MongoDAO:
@@ -119,17 +120,26 @@ class MongoDAO:
 
 class ImmobiliareCaseDao(MongoDAO):
 
-    def __init__(self, collection: str, host: str = MONGO_HOST, port: int = MONGO_PORT, db: str = MONGO_DB):
+    def __init__(self, collection: str = collection_case, host: str = MONGO_HOST, port: int = MONGO_PORT, db: str = MONGO_DB):
         super().__init__(host=host, port=port, db=db)
         self.collection = collection
+
+    def get_casa_by_id_immobiliare(self, id_immobiliare: str):
+        resp = list(self.query(collection=self.collection, q={"_id_immobiliare": id_immobiliare}))
+        if len(resp) > 0:
+            return CasaImmobiliare.from_dict(resp[0])
+        else:
+            raise Exception("Casa with id_immobiliare {} not found".format(id_immobiliare))
 
     def save_case(self, casa: CasaImmobiliare):
         resp = list(self.query(collection=self.collection, q={"_id_immobiliare": casa.id_immobiliare, "_prezzo": casa.prezzo}))
         if len(resp) == 0:
             self.save(collection=self.collection, obj=casa.__dict__)
             print("Save di casa {}".format(casa.id_immobiliare))
+            return self.get_casa_by_id_immobiliare(casa.id_immobiliare)
         else:
             print("Casa {} con stesso prezzo già salvato".format(casa.id_immobiliare))
+            return None
 
     def delete_case(self):
         self.drop(self.collection)
@@ -187,13 +197,97 @@ class ZoneRomaDao:
         raise Exception("Zona {} not found".format(nome_zona))
 
 
+class UtentiDao(MongoDAO):
+    def __init__(self, collection: str = collection_utenti, host: str = MONGO_HOST,
+                 port: int = MONGO_PORT, db: str = MONGO_DB):
+        super().__init__(host=host, port=port, db=db)
+        self.collection = collection
+
+    def save_utente(self, utente: Utente):
+        self.save(collection=self.collection, obj=utente.__dict__)
+
+    def delete_utenti_collection(self):
+        self.drop(self.collection)
+
+    def all_utenti(self) -> List[Utente]:
+
+        tot_num = self.count(self.collection)
+        rows = 500
+        start = 0
+        while start <= tot_num:
+            for u in self.all(self.collection, start, rows):
+                yield Utente.from_dict(u)
+            start += rows
+
+
+class Utenti2CaseDao(MongoDAO):
+    def __init__(self, collection: str = collection_utenti2case, host: str = MONGO_HOST,
+                 port: int = MONGO_PORT, db: str = MONGO_DB):
+        super().__init__(host=host, port=port, db=db)
+        self.collection = collection
+
+    def get_case_by_utente(self, id_utente: str):
+        resp = list(
+            self.query(collection=self.collection,
+                       q={"_id_utente": id_utente}))
+        return [utente2casa["_id_casa"] for utente2casa in resp]
+
+    def save_utente2casa(self, utente2casa: Utente2Casa):
+        resp = list(
+            self.query(collection=self.collection, q={"_id_utente": utente2casa.id_utente, "_id_casa": utente2casa.id_casa}))
+        if len(resp) == 0:
+            self.save(collection=self.collection, obj=utente2casa.__dict__)
+
+    def delete_utente2case_collection(self):
+        self.drop(self.collection)
+
+    def delete_utenti2case(self, id_casa: str):
+        self.delete_by_conditiondict(collection=self.collection, condition_dict={"_id_casa": id_casa})
+
+    def delete_utente2case(self, id_utente: str, id_casa: str):
+        self.delete_by_conditiondict(collection=self.collection, condition_dict={"_id_utente": id_utente,
+                                                                                 "_id_casa": id_casa})
+
+    def all_utenti2case(self) -> List[Utente]:
+
+        tot_num = self.count(self.collection)
+        rows = 500
+        start = 0
+        while start <= tot_num:
+            for u2c in self.all(self.collection, start, rows):
+                yield Utente2Casa.from_dict(u2c)
+            start += rows
+
+
 if __name__ == '__main__':
-    # dao = ImmobiliareCaseDao(collection="case_collection_1")
+    dao = ImmobiliareCaseDao(collection="case_collection_1")
     # dt = datetime.now()
     # dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
     # print(dt)
     # print(list(dao.all_case_by_date(dt)))
     # dao.delete_case()
-    # print(list(dao.all_case()))
+    print(dao.get_casa_by_id_immobiliare("1").__dict__)
 
-    dao = ZoneRomaDao()
+    for casa in dao.all_case():
+        print(casa.id_immobiliare)
+
+
+    # dao = ZoneRomaDao()
+    '''
+    utenti2case_dao = Utenti2CaseDao()
+    
+    utenti2case_dao.save_utente2casa(Utente2Casa(id_utente="5f9fd7e38d1fc6df8568cf8e", id_casa="2323",
+                                                 send_date=datetime.now()))
+    utenti2case_dao.save_utente2casa(Utente2Casa(id_utente="pippo", id_casa="2323",
+                                                 send_date=datetime.now()))
+    utenti2case_dao.save_utente2casa(Utente2Casa(id_utente="pluto", id_casa="3333333",
+                                                 send_date=datetime.now()))
+    for u in utenti2case_dao.all_utenti2case():
+        print(u.__dict__)
+    
+    utenti2case_dao.delete_utenti2case("2323")
+    print("------")
+    for u in utenti2case_dao.all_utenti2case():
+        print(u.__dict__)
+    utenti2case_dao.delete_utente2case_collection()
+    '''
