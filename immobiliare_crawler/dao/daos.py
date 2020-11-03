@@ -132,14 +132,21 @@ class ImmobiliareCaseDao(MongoDAO):
             raise Exception("Casa with id_immobiliare {} not found".format(id_immobiliare))
 
     def save_case(self, casa: CasaImmobiliare):
-        resp = list(self.query(collection=self.collection, q={"_id_immobiliare": casa.id_immobiliare, "_prezzo": casa.prezzo}))
+        resp = list(self.query(collection=self.collection, q={"_id_immobiliare": casa.id_immobiliare}))
         if len(resp) == 0:
             self.save(collection=self.collection, obj=casa.__dict__)
             print("Save di casa {}".format(casa.id_immobiliare))
             return self.get_casa_by_id_immobiliare(casa.id_immobiliare)
-        else:
-            print("Casa {} con stesso prezzo già salvato".format(casa.id_immobiliare))
-            return None
+        elif len(resp) > 0:
+            item = resp[0]
+            if item["_prezzo"] != casa.prezzo:
+                casa.id = item["_id"]
+                self.save(collection=self.collection, obj=casa.__dict__)
+                print("Save di casa {}".format(casa.id_immobiliare))
+                return self.get_casa_by_id_immobiliare(casa.id_immobiliare)
+            else:
+                print("Casa {} con stesso prezzo già salvato".format(casa.id_immobiliare))
+                return None
 
     def delete_case(self):
         self.drop(self.collection)
