@@ -1,5 +1,4 @@
 import os
-from typing import List
 from datetime import datetime
 import pandas as pd
 
@@ -29,7 +28,7 @@ class ReportGenerator:
             l = sorted(case_da_inviare, key=lambda x: x.prezzo, reverse=True)
 
             file_name = os.path.join(report_folder, "report_case_" + datetime.today().strftime("%d-%m-%Y") + ".xlsx")
-            df_case = pd.DataFrame([vars(s) for s in l], columns=['_id_immobiliare', '_link', '_titolo', '_prezzo', '_stanze', '_mq', '_bagni', '_piano'])
+            df_case = pd.DataFrame([vars(s) for s in l], columns=['_id_sorgente', '_link', '_titolo', '_prezzo', '_stanze', '_mq', '_bagni', '_piano'])
 
             ricerca = {'prezzo_minimo':  [str(user.prezzo_minimo)],
                        'prezzo_massimo': [str(user.prezzo_massimo)],

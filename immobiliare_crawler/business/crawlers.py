@@ -1,9 +1,10 @@
+import json
 from typing import List
 
 import requests
 from bs4 import BeautifulSoup
 
-from immobiliare_crawler.model.models import CasaImmobiliare
+from immobiliare_crawler.model.models import CasaImmobiliare, Zona
 
 
 class Crawler:
@@ -12,32 +13,56 @@ class Crawler:
 
 
 class ImmobiliareCrawler(Crawler):
-    def __init__(self, base_url: str = "https://www.immobiliare.it/en/vendita-appartamenti/roma/?criterio=rilevanza&noAste=1"):
-        self._base_url = base_url
+    def __init__(self):
+        self.base_url_case = "https://www.immobiliare.it/en/vendita-appartamenti/roma/?criterio=rilevanza&noAste=1"
+        self.base_url_zone = "https://www.immobiliare.it/services/geography/getGeography.php?action=getMacrozoneComune&idComune=6737"
+        self.comune = None
+        self.id2name = dict()
+        self.__parse_url(self.base_url_zone)
 
-    @property
-    def base_url(self):
-        return self._base_url
+    def __parse_url(self, base_url: str):
 
-    @base_url.setter
-    def base_url(self, base_url: str):
-        self._base_url = base_url
+        response = json.loads(requests.get(base_url).content.decode())
+        if "info" in response and "nome" in response["info"]:
+            self.comune = response["info"]["nome"]
+
+        if "result" in response:
+            macrozone = response["result"]
+            for mz in macrozone:
+                if "macrozona_idMacrozona" in mz and "macrozona_nome_sn" in mz:
+                    self.id2name[mz["macrozona_idMacrozona"]] = mz["macrozona_nome_sn"]
+
+    def all_zone(self) -> List[Zona]:
+        for k, v in self.id2name.items():
+            yield Zona(id_zona=k, nome_zona=v, comune=self.comune)
+
+    def get_zona_by_id(self, id_zona: str) -> Zona:
+        nome = self.id2name.get(id_zona)
+        return Zona(id_zona=id_zona, nome_zona=nome, comune=self.comune)
+
+    def get_zona_by_nome(self, nome_zona: str) -> Zona:
+        ids = [k for k, v in self.id2name.items() if v == nome_zona]
+        if len(ids) == 1:
+            return Zona(id_zona=ids[0], nome_zona=nome_zona, comune=self.comune)
+        raise Exception("Zona {} not found".format(nome_zona))
 
     def crawl(self, prezzo_minimo: int, prezzo_massimo: int, superficie_minima: int,
               superficie_massima: int, zone: List[str]) -> List[CasaImmobiliare]:
 
-        self.base_url += "&prezzoMinimo=" + str(prezzo_minimo)
+        id_zone = [self.get_zona_by_nome(nomi).id_zona for nomi in zone]
 
-        self.base_url += "&prezzoMassimo=" + str(prezzo_massimo)
+        self.base_url_case += "&prezzoMinimo=" + str(prezzo_minimo)
 
-        self.base_url += "&superficieMinima=" + str(superficie_minima)
+        self.base_url_case += "&prezzoMassimo=" + str(prezzo_massimo)
 
-        self.base_url += "&superficieMassima=" + str(superficie_massima)
+        self.base_url_case += "&superficieMinima=" + str(superficie_minima)
 
-        for zona in zone:
-            self.base_url += "&idMZona[]=" + str(zona)
+        self.base_url_case += "&superficieMassima=" + str(superficie_massima)
 
-        response = requests.get(self.base_url)
+        for zona in id_zone:
+            self.base_url_case += "&idMZona[]=" + str(zona)
+
+        response = requests.get(self.base_url_case)
         if response.status_code != 200: raise Exception("Bad base url")
         text_html_page = response.content.decode()
         bs_page = BeautifulSoup(text_html_page, features="html.parser")
@@ -48,7 +73,7 @@ class ImmobiliareCrawler(Crawler):
         page_number = 2
         while not errore:
             try:
-                url_paginated = self.base_url + "&pag=" + str(page_number)
+                url_paginated = self.base_url_case + "&pag=" + str(page_number)
                 response = requests.get(url_paginated)
                 if response.status_code != 200: raise Exception("No more pages")
                 text_html_page = response.content.decode()
@@ -69,7 +94,7 @@ class ImmobiliareCrawler(Crawler):
                 casa_body = casa.find(name="div", attrs={"class": "listing-item_body--content"})
 
                 if casa_body:
-                    casa_obj = CasaImmobiliare(id_immobiliare=id)
+                    casa_obj = CasaImmobiliare(id_sorgente=id)
                     link_titolo = casa_body.find(name="p", attrs={"class": "titolo"})
                     if link_titolo:
                         link = link_titolo.a.get("href")

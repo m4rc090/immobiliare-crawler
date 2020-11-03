@@ -3,8 +3,8 @@ from typing import Dict, List
 
 
 class CasaImmobiliare:
-    def __init__(self, id_immobiliare: str):
-        self._id_immobiliare = id_immobiliare
+    def __init__(self, id_sorgente: str):
+        self._id_sorgente = id_sorgente
         self._link = "NA"
         self._titolo = "NA"
         self._prezzo = 0
@@ -14,12 +14,12 @@ class CasaImmobiliare:
         self._piano = "NA"
 
     @property
-    def id_immobiliare(self):
-        return self._id_immobiliare
+    def id_sorgente(self):
+        return self._id_sorgente
 
-    @id_immobiliare.setter
-    def id_immobiliare(self, id_immobiliare: str):
-        self._id_immobiliare = id_immobiliare
+    @id_sorgente.setter
+    def id_sorgente(self, id_sorgente: str):
+        self._id_sorgente = id_sorgente
 
     @property
     def link(self):
@@ -88,7 +88,7 @@ class CasaImmobiliare:
     @staticmethod
     def from_dict(casa_dict: Dict):
 
-        casa = CasaImmobiliare(id_immobiliare=casa_dict["_id_immobiliare"])
+        casa = CasaImmobiliare(id_sorgente=casa_dict["_id_sorgente"])
         if "_link" in casa_dict:
             casa.link = casa_dict["_link"]
 

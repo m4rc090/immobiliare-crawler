@@ -1,18 +1,16 @@
 from typing import List
 
 from immobiliare_crawler.business.crawlers import ImmobiliareCrawler
-from immobiliare_crawler.dao.daos import ImmobiliareCaseDao, ZoneRomaDao, Utenti2CaseDao
+from immobiliare_crawler.dao.daos import ImmobiliareCaseDao, Utenti2CaseDao
 
 
 class JobCralwer:
     def __init__(self, crawler: ImmobiliareCrawler = ImmobiliareCrawler(),
                  dao_case: ImmobiliareCaseDao = ImmobiliareCaseDao(),
-                 dao_utenti2case: Utenti2CaseDao = Utenti2CaseDao(),
-                 dao_zone: ZoneRomaDao = ZoneRomaDao()):
+                 dao_utenti2case: Utenti2CaseDao = Utenti2CaseDao()):
         self.crawler = crawler
         self.dao = dao_case
         self.dao_utenti2case = dao_utenti2case
-        self.dao_zone = dao_zone
 
     def run_crawler(self, prezzo_minimo: int, prezzo_massimo: int, superficie_minima: int,
                     superficie_massima: int, zone: List[str]):

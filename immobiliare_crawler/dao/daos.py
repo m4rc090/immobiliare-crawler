@@ -1,14 +1,12 @@
-import json
 from datetime import datetime
 from typing import List
 
-import requests
 from bson import ObjectId
 from pymongo import DESCENDING, MongoClient
 
 from immobiliare_crawler.config.app_config import MONGO_HOST, MONGO_PORT, MONGO_DB
 from immobiliare_crawler.config.app_constants import collection_utenti, collection_case, collection_utenti2case
-from immobiliare_crawler.model.models import CasaImmobiliare, Zona, Utente, Utente2Casa
+from immobiliare_crawler.model.models import CasaImmobiliare, Utente, Utente2Casa
 
 
 class MongoDAO:
@@ -124,28 +122,28 @@ class ImmobiliareCaseDao(MongoDAO):
         super().__init__(host=host, port=port, db=db)
         self.collection = collection
 
-    def get_casa_by_id_immobiliare(self, id_immobiliare: str):
-        resp = list(self.query(collection=self.collection, q={"_id_immobiliare": id_immobiliare}))
+    def get_casa_by_id_sorgente(self, id_sorgente: str):
+        resp = list(self.query(collection=self.collection, q={"_id_sorgente": id_sorgente}))
         if len(resp) > 0:
             return CasaImmobiliare.from_dict(resp[0])
         else:
-            raise Exception("Casa with id_immobiliare {} not found".format(id_immobiliare))
+            raise Exception("Casa with id_sorgente {} not found".format(id_sorgente))
 
     def save_case(self, casa: CasaImmobiliare):
-        resp = list(self.query(collection=self.collection, q={"_id_immobiliare": casa.id_immobiliare}))
+        resp = list(self.query(collection=self.collection, q={"_id_sorgente": casa.id_sorgente}))
         if len(resp) == 0:
             self.save(collection=self.collection, obj=casa.__dict__)
-            print("Save di casa {}".format(casa.id_immobiliare))
-            return self.get_casa_by_id_immobiliare(casa.id_immobiliare)
+            print("Save di casa {}".format(casa.id_sorgente))
+            return self.get_casa_by_id_sorgente(casa.id_sorgente)
         elif len(resp) > 0:
             item = resp[0]
             if item["_prezzo"] != casa.prezzo:
                 casa.id = item["_id"]
                 self.save(collection=self.collection, obj=casa.__dict__)
-                print("Save di casa {}".format(casa.id_immobiliare))
-                return self.get_casa_by_id_immobiliare(casa.id_immobiliare)
+                print("Save di casa {}".format(casa.id_sorgente))
+                return self.get_casa_by_id_sorgente(casa.id_sorgente)
             else:
-                print("Casa {} con stesso prezzo già salvato".format(casa.id_immobiliare))
+                print("Casa {} con stesso prezzo già salvato".format(casa.id_sorgente))
                 return None
 
     def delete_case(self):
@@ -167,41 +165,6 @@ class ImmobiliareCaseDao(MongoDAO):
         q = {"_crawling_date": {"$gte": date}}
         for casa in self.query(self.collection, q):
             yield CasaImmobiliare.from_dict(casa)
-
-
-# qui poi ci facciamo una bella factory per citta'
-class ZoneRomaDao:
-    def __init__(self, base_url: str = "https://www.immobiliare.it/services/geography/getGeography.php?action=getMacrozoneComune&idComune=6737"):
-        self.base_url = base_url
-        self.comune = None
-        self.id2name = dict()
-        self.__parse_url(self.base_url)
-
-    def __parse_url(self, base_url: str):
-
-        response = json.loads(requests.get(base_url).content.decode())
-        if "info" in response and "nome" in response["info"]:
-            self.comune = response["info"]["nome"]
-
-        if "result" in response:
-            macrozone = response["result"]
-            for mz in macrozone:
-                if "macrozona_idMacrozona" in mz and "macrozona_nome_sn" in mz:
-                    self.id2name[mz["macrozona_idMacrozona"]] = mz["macrozona_nome_sn"]
-
-    def all_zone(self) -> List[Zona]:
-        for k, v in self.id2name.items():
-            yield Zona(id_zona=k, nome_zona=v, comune=self.comune)
-
-    def get_zona_by_id(self, id_zona: str) -> Zona:
-        nome = self.id2name.get(id_zona)
-        return Zona(id_zona=id_zona, nome_zona=nome, comune=self.comune)
-
-    def get_zona_by_nome(self, nome_zona: str) -> Zona:
-        ids = [k for k, v in self.id2name.items() if v == nome_zona]
-        if len(ids) == 1:
-            return Zona(id_zona=ids[0], nome_zona=nome_zona, comune=self.comune)
-        raise Exception("Zona {} not found".format(nome_zona))
 
 
 class UtentiDao(MongoDAO):
@@ -264,37 +227,3 @@ class Utenti2CaseDao(MongoDAO):
             for u2c in self.all(self.collection, start, rows):
                 yield Utente2Casa.from_dict(u2c)
             start += rows
-
-
-if __name__ == '__main__':
-    dao = ImmobiliareCaseDao(collection="case_collection_1")
-    # dt = datetime.now()
-    # dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    # print(dt)
-    # print(list(dao.all_case_by_date(dt)))
-    # dao.delete_case()
-    print(dao.get_casa_by_id_immobiliare("1").__dict__)
-
-    for casa in dao.all_case():
-        print(casa.id_immobiliare)
-
-
-    # dao = ZoneRomaDao()
-    '''
-    utenti2case_dao = Utenti2CaseDao()
-    
-    utenti2case_dao.save_utente2casa(Utente2Casa(id_utente="5f9fd7e38d1fc6df8568cf8e", id_casa="2323",
-                                                 send_date=datetime.now()))
-    utenti2case_dao.save_utente2casa(Utente2Casa(id_utente="pippo", id_casa="2323",
-                                                 send_date=datetime.now()))
-    utenti2case_dao.save_utente2casa(Utente2Casa(id_utente="pluto", id_casa="3333333",
-                                                 send_date=datetime.now()))
-    for u in utenti2case_dao.all_utenti2case():
-        print(u.__dict__)
-    
-    utenti2case_dao.delete_utenti2case("2323")
-    print("------")
-    for u in utenti2case_dao.all_utenti2case():
-        print(u.__dict__)
-    utenti2case_dao.delete_utente2case_collection()
-    '''
