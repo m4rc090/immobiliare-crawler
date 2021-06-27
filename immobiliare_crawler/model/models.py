@@ -124,18 +124,29 @@ class Zona:
 
 
 class Utente:
-    def __init__(self, emails: List[str],
+    def __init__(self,
+                 nome: str,
+                 emails: List[str],
                  prezzo_minimo: int = None,
                  prezzo_massimo: int = None,
                  superficie_minima: int = None,
                  superficie_massima: int = None,
                  zone_text: List[str] = None):
+        self._nome = nome
         self._emails = emails
         self._prezzo_minimo = prezzo_minimo
         self._prezzo_massimo = prezzo_massimo
         self._superficie_minima = superficie_minima
         self._superficie_massima = superficie_massima
         self._zone_text = zone_text
+
+    @property
+    def nome(self):
+        return self._nome
+
+    @nome.setter
+    def nome(self, nome: str):
+        self._nome = nome
 
     @property
     def emails(self):
@@ -196,7 +207,7 @@ class Utente:
     @staticmethod
     def from_dict(utente_dict: Dict):
 
-        utente = Utente(emails=utente_dict["_emails"])
+        utente = Utente(nome=utente_dict["_nome"], emails=utente_dict["_emails"])
 
         if "_prezzo_minimo" in utente_dict:
             utente.prezzo_minimo = utente_dict["_prezzo_minimo"]

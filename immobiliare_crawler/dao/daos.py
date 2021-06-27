@@ -79,6 +79,17 @@ class MongoDAO:
         el["_id"] = str(el["_id"])
         return el
 
+    def getbycondition(self, collection, condition_dict):
+        coll = self.__getcoll(collection)
+        el = coll.find_one(condition_dict)
+        if not el:
+            raise Exception(f"Element not found")
+        el["_id"] = str(el["_id"])
+        return el
+
+    def findandupdate(self, collection, condition_dict, update_dict):
+        self.__getcoll(collection).find_one_and_update(filter=condition_dict, update={"$set": update_dict}, upsert=True)
+
     def collections(self):
         return self.client.get_database(self.db).collection_names()
 
@@ -174,7 +185,8 @@ class UtentiDao(MongoDAO):
         self.collection = collection
 
     def save_utente(self, utente: Utente):
-        self.save(collection=self.collection, obj=utente.__dict__)
+        self.findandupdate(collection=self.collection,
+                           condition_dict={"_nome": utente.nome}, update_dict=utente.__dict__)
 
     def delete_utenti_collection(self):
         self.drop(self.collection)
